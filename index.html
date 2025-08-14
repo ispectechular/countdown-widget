@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class Countdown Timer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Lexend', sans-serif;
+      background-color: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #0f172a;
+    }
+
+    .countdown-container {
+      text-align: center;
+      padding: 40px;
+      background-color: rgba(255, 255, 255, 0.7);
+      border-radius: 16px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .label {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #4A7A92;
+      margin-bottom: 10px;
+    }
+
+    .countdown-label {
+      font-size: 1.25rem;
+      color: #879B8D;
+      margin-top: 20px;
+      font-weight: 500;
+    }
+
+    .timer {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #756A85;
+    }
+  </style>
+</head>
+<body>
+  <div class="countdown-container">
+    <div class="label" id="label">Loading...</div>
+    <div class="timer" id="timer">--:--</div>
+    <div class="countdown-label">Time Remaining</div>
+  </div>
+
+  <script>
+    const schedule = [
+      { label: "Period 1", start: "08:05", end: "08:50" },
+      { label: "Period 2", start: "08:55", end: "09:40" },
+      { label: "Period 3", start: "09:45", end: "10:30" },
+      { label: "Period 4", start: "10:35", end: "11:15" },
+      { label: "5A Lunch / 5B Class", start: "11:15", end: "12:05" },
+      { label: "5A Class / 5B Lunch", start: "12:05", end: "12:35" },
+      { label: "Period 6", start: "12:40", end: "13:25" },
+      { label: "Period 7", start: "13:30", end: "14:15" },
+      { label: "Period 8", start: "14:20", end: "15:05" },
+    ];
+
+    function getCurrentSegment(now) {
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      for (let i = 0; i < schedule.length; i++) {
+        const [sh, sm] = schedule[i].start.split(":").map(Number);
+        const [eh, em] = schedule[i].end.split(":").map(Number);
+        const start = sh * 60 + sm;
+        const end = eh * 60 + em;
+
+        if (currentMinutes >= start && currentMinutes < end) {
+          return {
+            label: schedule[i].label,
+            endHour: eh,
+            endMinute: em
+          };
+        }
+
+        if (i < schedule.length - 1) {
+          const [nextSh, nextSm] = schedule[i + 1].start.split(":").map(Number);
+          const passingStart = end;
+          const passingEnd = nextSh * 60 + nextSm;
+
+          if (currentMinutes >= passingStart && currentMinutes < passingEnd) {
+            return {
+              label: "Passing Period",
+              endHour: nextSh,
+              endMinute: nextSm
+            };
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function updateTimer() {
+      const now = new Date();
+      const segment = getCurrentSegment(now);
+
+      if (!segment) {
+        document.getElementById("label").innerText = "No Class In Session";
+        document.getElementById("timer").innerText = "--:--";
+        return;
+      }
+
+      const end = new Date();
+      end.setHours(segment.endHour, segment.endMinute, 0, 0);
+
+      let diff = Math.floor((end - now) / 1000);
+
+      const minutes = Math.floor(diff / 60);
+      const seconds = diff % 60;
+
+      document.getElementById("label").innerText = segment.label;
+      document.getElementById("timer").innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    setInterval(updateTimer, 1000);
+    updateTimer();
+  </script>
+</body>
+</html>
