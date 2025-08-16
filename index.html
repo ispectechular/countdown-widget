@@ -3,9 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Class Countdown Timer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500&display=swap" rel="stylesheet">
+  <title>Class Countdown Timer — Responsive</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet">
   <style>
+    :root{
+      --slate-blue:#4A7A92;
+      --muted-green:#879B8D;
+      --soft-purple:#756A85;
+      --glass-bg: rgba(255,255,255,0.7);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       padding: 0;
@@ -14,37 +22,46 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100svh; /* projector-friendly; works when embedded */
       color: #0f172a;
     }
 
     .countdown-container {
-      text-align: center;
-      padding: 40px;
-      background-color: rgba(255, 255, 255, 0.7);
-      border-radius: 16px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 900px;        /* big and readable on projectors */
+      aspect-ratio: 4/3;       /* consistent shape as it scales */
+      background-color: var(--glass-bg);
       backdrop-filter: blur(10px);
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4%;
+      gap: 1rem;
+      text-align: center;
     }
 
     .label {
-      font-size: 2rem;
-      font-weight: 600;
-      color: #4A7A92;
-      margin-bottom: 10px;
-    }
-
-    .countdown-label {
-      font-size: 1.25rem;
-      color: #879B8D;
-      margin-top: 20px;
-      font-weight: 500;
+      font-size: clamp(1.5rem, 3vw, 3rem);
+      font-weight: 700;
+      color: var(--slate-blue);
+      margin: 0;
     }
 
     .timer {
-      font-size: 6rem;
-      font-weight: bold;
-      color: #756A85;
+      font-size: clamp(3rem, 8vw, 8rem);
+      font-weight: 700;
+      color: var(--soft-purple);
+      line-height: 1;
+    }
+
+    .countdown-label {
+      font-size: clamp(1rem, 2vw, 2rem);
+      color: var(--muted-green);
+      font-weight: 700;
+      margin: 0;
     }
   </style>
 </head>
@@ -56,6 +73,7 @@
   </div>
 
   <script>
+    // Edit your schedule here
     const schedule = [
       { label: "Period 1", start: "08:05", end: "08:50" },
       { label: "Period 2", start: "08:55", end: "09:40" },
@@ -77,29 +95,22 @@
         const start = sh * 60 + sm;
         const end = eh * 60 + em;
 
+        // In-session
         if (currentMinutes >= start && currentMinutes < end) {
-          return {
-            label: schedule[i].label,
-            endHour: eh,
-            endMinute: em
-          };
+          return { label: schedule[i].label, endHour: eh, endMinute: em };
         }
 
+        // Passing period (between this end and next start)
         if (i < schedule.length - 1) {
           const [nextSh, nextSm] = schedule[i + 1].start.split(":").map(Number);
           const passingStart = end;
           const passingEnd = nextSh * 60 + nextSm;
 
           if (currentMinutes >= passingStart && currentMinutes < passingEnd) {
-            return {
-              label: "Passing Period",
-              endHour: nextSh,
-              endMinute: nextSm
-            };
+            return { label: "Passing Period", endHour: nextSh, endMinute: nextSm };
           }
         }
       }
-
       return null;
     }
 
@@ -108,25 +119,24 @@
       const segment = getCurrentSegment(now);
 
       if (!segment) {
-        document.getElementById("label").innerText = "No Class In Session";
-        document.getElementById("timer").innerText = "--:--";
+        document.getElementById("label").textContent = "No Class In Session";
+        document.getElementById("timer").textContent = "--:--";
         return;
       }
 
       const end = new Date();
       end.setHours(segment.endHour, segment.endMinute, 0, 0);
 
-      let diff = Math.floor((end - now) / 1000);
-
+      let diff = Math.max(0, Math.floor((end - now) / 1000));
       const minutes = Math.floor(diff / 60);
       const seconds = diff % 60;
 
-      document.getElementById("label").innerText = segment.label;
-      document.getElementById("timer").innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      document.getElementById("label").textContent = segment.label;
+      document.getElementById("timer").textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    setInterval(updateTimer, 1000);
     updateTimer();
+    setInterval(updateTimer, 1000);
   </script>
 </body>
 </html>
