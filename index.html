@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Class Countdown Timer — Aspect‑Locked & Proportional</title>
+  <title>Class Countdown Timer — Aspect‑Locked Transform Scale</title>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet" />
   <style>
     :root{
@@ -11,45 +11,53 @@
       --muted-green:#879B8D; /* subtitles */
       --soft-purple:#756A85; /* numbers */
       --glass-bg: rgba(255,255,255,0.7);
-      --radius: 20px;
+      --radius: 20px; /* consistent rounded corners */
     }
 
-    /* Fill whatever space the iframe gives us */
     html, body { height:100%; margin:0; background:transparent; font-family:'Lexend',sans-serif; }
 
-    /* Stage takes 100% and centers the card */
-    .stage{ position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+    .stage{ position:relative; width:100%; height:100%; overflow:hidden; background:transparent; padding:3%; box-sizing:border-box; }
 
-    /* Card keeps a fixed aspect ratio (4:3) and is sized by JS to fit within the stage */
-    .card{
-      position:relative;
-      background:var(--glass-bg);
-      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-      border-radius: var(--radius); overflow:hidden;
-      box-shadow:0 10px 20px rgba(0,0,0,0.1);
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      text-align:center; padding:2.5%;
+    .base{
+      position:absolute; left:0; top:0;
+      width: 800px;
+      height: 600px;
+      transform-origin: 0 0;
+      will-change: transform;
     }
 
-    /* Typography scales from a single --base value injected by JS */
-    .label{ color:var(--slate-blue); font-weight:700; line-height:1.1; font-size: calc(var(--base) * 0.09); margin:0; }
-    .timer{ color:var(--soft-purple); font-weight:700; line-height:1;   font-size: calc(var(--base) * 0.28); letter-spacing:0.02em; margin:0; }
-    .countdown-label{ color:var(--muted-green); font-weight:700; line-height:1.1; font-size: calc(var(--base) * 0.075); margin:0; }
+    .card{
+      width:100%; height:100%;
+      background:var(--glass-bg);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      overflow:hidden;
+
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding: 40px;
+    }
+
+    .label{ color:var(--slate-blue); font-weight:700; line-height:1.1; font-size: 64px; margin:0 0 16px 0; }
+    .timer{ color:var(--soft-purple); font-weight:700; line-height:1; font-size: 200px; letter-spacing:0.02em; margin:6px 0; }
+    .countdown-label{ color:var(--muted-green); font-weight:700; line-height:1.1; font-size: 48px; margin:12px 0 0 0; }
     .timer.hidden{ display:none; }
   </style>
 </head>
 <body>
   <div class="stage" id="stage">
-    <div class="card" id="card" style="--base:16px">
-      <div class="label" id="label">Loading...</div>
-      <div class="timer" id="timer">--:--</div>
-      <div class="countdown-label" id="sub">Time Remaining</div>
+    <div class="base" id="base">
+      <div class="card">
+        <div class="label" id="label">Loading...</div>
+        <div class="timer" id="timer">--:--</div>
+        <div class="countdown-label" id="sub">Time Remaining</div>
+      </div>
     </div>
   </div>
 
   <script>
-    // ===== Configuration =====
-    const RATIO_W = 4, RATIO_H = 3; // locked 4:3 card
+    const BASE_W = 800;
+    const BASE_H = 600;
+
     const schedule = [
       { label: "Period 1", start: "08:05", end: "08:50" },
       { label: "Period 2", start: "08:55", end: "09:40" },
@@ -62,7 +70,6 @@
       { label: "Period 8", start: "14:20", end: "15:05" },
     ];
 
-    // ===== Time helpers =====
     function toMinutes(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
 
     function getCurrentSegment(now) {
@@ -70,13 +77,11 @@
       const firstStart = toMinutes(schedule[0].start);
       const lastEnd   = toMinutes(schedule[schedule.length-1].end);
 
-      // BEFORE SCHOOL
       if (currentMinutes < firstStart) {
         const [sh, sm] = schedule[0].start.split(":").map(Number);
         return { label: "School Starts In", endHour: sh, endMinute: sm, sub: "Until 1st Period", showTimer:true };
       }
 
-      // DURING DAY
       for (let i=0;i<schedule.length;i++){
         const [sh, sm] = schedule[i].start.split(":").map(Number);
         const [eh, em] = schedule[i].end.split(":").map(Number);
@@ -93,7 +98,6 @@
         }
       }
 
-      // AFTER SCHOOL
       if (currentMinutes >= lastEnd){
         return { label: "School Day Over", endHour: null, endMinute: null, sub: "See you tomorrow", showTimer:false };
       }
@@ -132,38 +136,22 @@
       timerEl.textContent = `${mm}:${ss.toString().padStart(2,'0')}`;
     }
 
-    // ===== Aspect‑ratio fit + proportional typography =====
     const stage = document.getElementById('stage');
-    const card  = document.getElementById('card');
+    const base  = document.getElementById('base');
 
-    function sizeCard(){
-      const W = stage.clientWidth;  // available width in iframe
-      const H = stage.clientHeight; // available height in iframe
-      const targetRatio = RATIO_W / RATIO_H;
-
-      // Fit within stage while preserving ratio
-      let cw = W;               // candidate width
-      let ch = cw / targetRatio; // resulting height
-      if (ch > H){              // too tall → bound by height instead
-        ch = H;
-        cw = ch * targetRatio;
-      }
-
-      // Apply pixel size
-      card.style.width = Math.floor(cw) + 'px';
-      card.style.height = Math.floor(ch) + 'px';
-
-      // Base = min dimension; drives all font sizes
-      const base = Math.min(cw, ch);
-      card.style.setProperty('--base', base + 'px');
+    function layout(){
+      const W = stage.clientWidth;
+      const H = stage.clientHeight;
+      const scale = Math.max(0.1, Math.min(W/BASE_W, H/BASE_H));
+      base.style.transform = `translate(${(W-BASE_W*scale)/2}px, ${(H-BASE_H*scale)/2}px) scale(${scale})`;
     }
 
-    // ResizeObserver is more reliable inside ClassroomScreen iframes than window.resize
-    const ro = new ResizeObserver(sizeCard);
+    const ro = new ResizeObserver(layout);
     ro.observe(stage);
-    window.addEventListener('orientationchange', sizeCard);
-    window.addEventListener('load', () => { sizeCard(); updateTimer(); });
+    window.addEventListener('orientationchange', layout);
+    window.addEventListener('load', () => { layout(); updateTimer(); });
     setInterval(updateTimer, 1000);
   </script>
 </body>
 </html>
+
