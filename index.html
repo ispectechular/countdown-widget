@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Class Countdown Timer — Responsive Canvas</title>
+  <title>Class Countdown Timer — Embed‑Safe</title>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -12,46 +12,45 @@
       --soft-purple:#756A85;
       --glass-bg: rgba(255,255,255,0.7);
     }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: transparent;
-      font-family: 'Lexend', sans-serif;
-    }
+
+    /* Make sure an iframe/embed can let us fill 100% */
+    html, body { height: 100%; margin: 0; background: transparent; font-family:'Lexend',sans-serif; }
+
+    /* One full-bleed card that fills whatever ClassroomScreen gives us */
     .countdown-container {
-      width: 100%;
-      height: 100%;
-      background-color: var(--glass-bg);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 2%;
-      text-align: center;
+      width: 100%; height: 100%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap: 1.5vmin; text-align:center; padding: 2.5vmin;
+      background: var(--glass-bg); backdrop-filter: blur(10px);
+      border-radius: 20px; box-shadow:0 10px 20px rgba(0,0,0,0.1);
     }
-    .label,
-    .timer,
-    .countdown-label {
-      margin: 0;
-      line-height: 1.1;
-      word-break: break-word;
+
+    /* Pure CSS fluid typography using viewport units of the iframe
+       (works reliably in ClassroomScreen + GitHub Pages) */
+    .label{ color:var(--slate-blue); font-weight:700; line-height:1.1; 
+      font-size: clamp(14px, 6vmin, 48px);
     }
-    .label { color: var(--slate-blue); font-weight: 700; }
-    .timer { color: var(--soft-purple); font-weight: 700; }
-    .countdown-label { color: var(--muted-green); font-weight: 700; }
+    .timer{ color:var(--soft-purple); font-weight:700; line-height:1; 
+      font-size: clamp(24px, 18vmin, 160px);
+      letter-spacing: 0.02em;
+    }
+    .countdown-label{ color:var(--muted-green); font-weight:700; line-height:1.1; 
+      font-size: clamp(12px, 4.5vmin, 36px);
+    }
+
+    /* When there is no live timer (after school), hide the timer row so layout looks normal */
+    .timer.hidden { display:none; }
   </style>
 </head>
 <body>
-  <div class="countdown-container" id="container">
+  <div class="countdown-container">
     <div class="label" id="label">Loading...</div>
     <div class="timer" id="timer">--:--</div>
     <div class="countdown-label" id="sub">Time Remaining</div>
   </div>
 
   <script>
+    // EDIT YOUR SCHEDULE HERE
     const schedule = [
       { label: "Period 1", start: "08:05", end: "08:50" },
       { label: "Period 2", start: "08:55", end: "09:40" },
@@ -67,81 +66,75 @@
     function toMinutes(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
 
     function getCurrentSegment(now) {
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const currentMinutes = now.getHours()*60 + now.getMinutes();
       const firstStart = toMinutes(schedule[0].start);
-      const lastEnd = toMinutes(schedule[schedule.length-1].end);
+      const lastEnd   = toMinutes(schedule[schedule.length-1].end);
 
+      // BEFORE SCHOOL
       if (currentMinutes < firstStart) {
         const [sh, sm] = schedule[0].start.split(":").map(Number);
-        return { label: "School Starts In", endHour: sh, endMinute: sm, sub: "Until 1st Period" };
+        return { label: "School Starts In", endHour: sh, endMinute: sm, sub: "Until 1st Period", showTimer:true };
       }
 
-      for (let i = 0; i < schedule.length; i++) {
+      // DURING DAY
+      for (let i=0;i<schedule.length;i++){
         const [sh, sm] = schedule[i].start.split(":").map(Number);
         const [eh, em] = schedule[i].end.split(":").map(Number);
-        const start = sh * 60 + sm;
-        const end = eh * 60 + em;
-
-        if (currentMinutes >= start && currentMinutes < end) {
-          return { label: schedule[i].label, endHour: eh, endMinute: em, sub: "Time Remaining" };
+        const start = sh*60+sm, end = eh*60+em;
+        if (currentMinutes >= start && currentMinutes < end){
+          return { label: schedule[i].label, endHour: eh, endMinute: em, sub: "Time Remaining", showTimer:true };
         }
-
-        if (i < schedule.length - 1) {
-          const [nextSh, nextSm] = schedule[i + 1].start.split(":").map(Number);
-          if (currentMinutes >= end && currentMinutes < nextSh * 60 + nextSm) {
-            return { label: "Passing Period", endHour: nextSh, endMinute: nextSm, sub: "Until Next Class" };
+        if (i < schedule.length-1){
+          const [nsh, nsm] = schedule[i+1].start.split(":").map(Number);
+          const nextStart = nsh*60+nsm;
+          if (currentMinutes >= end && currentMinutes < nextStart){
+            return { label: "Passing Period", endHour: nsh, endMinute: nsm, sub: "Until Next Class", showTimer:true };
           }
         }
       }
 
-      if (currentMinutes >= lastEnd) {
-        return { label: "School Day Over", endHour: null, endMinute: null, sub: "See you tomorrow" };
+      // AFTER SCHOOL
+      if (currentMinutes >= lastEnd){
+        return { label: "School Day Over", endHour: null, endMinute: null, sub: "See you tomorrow", showTimer:false };
       }
       return null;
     }
 
-    function updateTimer() {
+    function updateTimer(){
       const now = new Date();
-      const segment = getCurrentSegment(now);
-      const labelEl = document.getElementById("label");
-      const timerEl = document.getElementById("timer");
-      const subEl = document.getElementById("sub");
+      const seg = getCurrentSegment(now);
+      const labelEl = document.getElementById('label');
+      const timerEl = document.getElementById('timer');
+      const subEl   = document.getElementById('sub');
 
-      if (!segment) {
-        labelEl.textContent = "No Class In Session";
-        timerEl.textContent = "--:--";
-        subEl.textContent = "";
+      if (!seg){
+        labelEl.textContent = 'No Class In Session';
+        timerEl.textContent = '--:--';
+        timerEl.classList.remove('hidden');
+        subEl.textContent = '';
         return;
       }
 
-      labelEl.textContent = segment.label;
-      subEl.textContent = segment.sub || "";
+      labelEl.textContent = seg.label;
+      subEl.textContent = seg.sub || '';
 
-      if (segment.endHour === null) {
-        timerEl.textContent = "--:--";
+      if (!seg.showTimer || seg.endHour === null){
+        timerEl.classList.add('hidden');
         return;
+      } else {
+        timerEl.classList.remove('hidden');
       }
 
       const end = new Date();
-      end.setHours(segment.endHour, segment.endMinute, 0, 0);
-
-      let diff = Math.max(0, Math.floor((end - now) / 1000));
-      const minutes = Math.floor(diff / 60);
-      const seconds = diff % 60;
-      timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      end.setHours(seg.endHour, seg.endMinute, 0, 0);
+      const diff = Math.max(0, Math.floor((end - now)/1000));
+      const mm = Math.floor(diff/60), ss = diff%60;
+      timerEl.textContent = `${mm}:${ss.toString().padStart(2,'0')}`;
     }
 
-    function resizeText() {
-      const container = document.getElementById("container");
-      const base = Math.min(container.offsetWidth, container.offsetHeight);
-      document.querySelector(".label").style.fontSize = (base * 0.07) + "px";
-      document.querySelector(".timer").style.fontSize = (base * 0.22) + "px";
-      document.querySelector(".countdown-label").style.fontSize = (base * 0.06) + "px";
-    }
-
-    window.addEventListener("resize", () => { resizeText(); updateTimer(); });
-    window.addEventListener("load", () => { resizeText(); updateTimer(); });
-    setInterval(() => { updateTimer(); }, 1000);
+    // No resize JS needed — fonts scale with vmin (iframe viewport).
+    updateTimer();
+    setInterval(updateTimer, 1000);
   </script>
 </body>
 </html>
