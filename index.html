@@ -1,56 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Class Countdown Timer — Embed‑Safe</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Class Countdown Timer — Aspect‑Locked & Proportional</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet" />
   <style>
     :root{
-      --slate-blue:#4A7A92;
-      --muted-green:#879B8D;
-      --soft-purple:#756A85;
+      --slate-blue:#4A7A92; /* titles */
+      --muted-green:#879B8D; /* subtitles */
+      --soft-purple:#756A85; /* numbers */
       --glass-bg: rgba(255,255,255,0.7);
+      --radius: 20px;
     }
 
-    /* Make sure an iframe/embed can let us fill 100% */
-    html, body { height: 100%; margin: 0; background: transparent; font-family:'Lexend',sans-serif; }
+    /* Fill whatever space the iframe gives us */
+    html, body { height:100%; margin:0; background:transparent; font-family:'Lexend',sans-serif; }
 
-    /* One full-bleed card that fills whatever ClassroomScreen gives us */
-    .countdown-container {
-      width: 100%; height: 100%;
+    /* Stage takes 100% and centers the card */
+    .stage{ position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+
+    /* Card keeps a fixed aspect ratio (4:3) and is sized by JS to fit within the stage */
+    .card{
+      position:relative;
+      background:var(--glass-bg);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border-radius: var(--radius); overflow:hidden;
+      box-shadow:0 10px 20px rgba(0,0,0,0.1);
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      gap: 1.5vmin; text-align:center; padding: 2.5vmin;
-      background: var(--glass-bg); backdrop-filter: blur(10px);
-      border-radius: 20px; box-shadow:0 10px 20px rgba(0,0,0,0.1);
+      text-align:center; padding:2.5%;
     }
 
-    /* Pure CSS fluid typography using viewport units of the iframe
-       (works reliably in ClassroomScreen + GitHub Pages) */
-    .label{ color:var(--slate-blue); font-weight:700; line-height:1.1; 
-      font-size: clamp(14px, 6vmin, 48px);
-    }
-    .timer{ color:var(--soft-purple); font-weight:700; line-height:1; 
-      font-size: clamp(24px, 18vmin, 160px);
-      letter-spacing: 0.02em;
-    }
-    .countdown-label{ color:var(--muted-green); font-weight:700; line-height:1.1; 
-      font-size: clamp(12px, 4.5vmin, 36px);
-    }
-
-    /* When there is no live timer (after school), hide the timer row so layout looks normal */
-    .timer.hidden { display:none; }
+    /* Typography scales from a single --base value injected by JS */
+    .label{ color:var(--slate-blue); font-weight:700; line-height:1.1; font-size: calc(var(--base) * 0.09); margin:0; }
+    .timer{ color:var(--soft-purple); font-weight:700; line-height:1;   font-size: calc(var(--base) * 0.28); letter-spacing:0.02em; margin:0; }
+    .countdown-label{ color:var(--muted-green); font-weight:700; line-height:1.1; font-size: calc(var(--base) * 0.075); margin:0; }
+    .timer.hidden{ display:none; }
   </style>
 </head>
 <body>
-  <div class="countdown-container">
-    <div class="label" id="label">Loading...</div>
-    <div class="timer" id="timer">--:--</div>
-    <div class="countdown-label" id="sub">Time Remaining</div>
+  <div class="stage" id="stage">
+    <div class="card" id="card" style="--base:16px">
+      <div class="label" id="label">Loading...</div>
+      <div class="timer" id="timer">--:--</div>
+      <div class="countdown-label" id="sub">Time Remaining</div>
+    </div>
   </div>
 
   <script>
-    // EDIT YOUR SCHEDULE HERE
+    // ===== Configuration =====
+    const RATIO_W = 4, RATIO_H = 3; // locked 4:3 card
     const schedule = [
       { label: "Period 1", start: "08:05", end: "08:50" },
       { label: "Period 2", start: "08:55", end: "09:40" },
@@ -63,6 +62,7 @@
       { label: "Period 8", start: "14:20", end: "15:05" },
     ];
 
+    // ===== Time helpers =====
     function toMinutes(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
 
     function getCurrentSegment(now) {
@@ -132,8 +132,37 @@
       timerEl.textContent = `${mm}:${ss.toString().padStart(2,'0')}`;
     }
 
-    // No resize JS needed — fonts scale with vmin (iframe viewport).
-    updateTimer();
+    // ===== Aspect‑ratio fit + proportional typography =====
+    const stage = document.getElementById('stage');
+    const card  = document.getElementById('card');
+
+    function sizeCard(){
+      const W = stage.clientWidth;  // available width in iframe
+      const H = stage.clientHeight; // available height in iframe
+      const targetRatio = RATIO_W / RATIO_H;
+
+      // Fit within stage while preserving ratio
+      let cw = W;               // candidate width
+      let ch = cw / targetRatio; // resulting height
+      if (ch > H){              // too tall → bound by height instead
+        ch = H;
+        cw = ch * targetRatio;
+      }
+
+      // Apply pixel size
+      card.style.width = Math.floor(cw) + 'px';
+      card.style.height = Math.floor(ch) + 'px';
+
+      // Base = min dimension; drives all font sizes
+      const base = Math.min(cw, ch);
+      card.style.setProperty('--base', base + 'px');
+    }
+
+    // ResizeObserver is more reliable inside ClassroomScreen iframes than window.resize
+    const ro = new ResizeObserver(sizeCard);
+    ro.observe(stage);
+    window.addEventListener('orientationchange', sizeCard);
+    window.addEventListener('load', () => { sizeCard(); updateTimer(); });
     setInterval(updateTimer, 1000);
   </script>
 </body>
