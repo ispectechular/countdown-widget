@@ -17,14 +17,10 @@
       margin: 0;
       background: transparent;
       font-family: 'Lexend', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
     .countdown-container {
-      width: 90%;
-      max-width: 900px;
-      aspect-ratio: 4/3;
+      width: 100%;
+      height: 100%;
       background-color: var(--glass-bg);
       backdrop-filter: blur(10px);
       border-radius: 20px;
@@ -33,8 +29,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 4%;
-      gap: 1rem;
+      padding: 2%;
       text-align: center;
     }
     .label,
@@ -42,26 +37,18 @@
     .countdown-label {
       margin: 0;
       line-height: 1.1;
+      word-break: break-word;
     }
-    .label {
-      color: var(--slate-blue);
-      font-weight: 700;
-    }
-    .timer {
-      color: var(--soft-purple);
-      font-weight: 700;
-    }
-    .countdown-label {
-      color: var(--muted-green);
-      font-weight: 700;
-    }
+    .label { color: var(--slate-blue); font-weight: 700; }
+    .timer { color: var(--soft-purple); font-weight: 700; }
+    .countdown-label { color: var(--muted-green); font-weight: 700; }
   </style>
 </head>
 <body>
   <div class="countdown-container" id="container">
     <div class="label" id="label">Loading...</div>
     <div class="timer" id="timer">--:--</div>
-    <div class="countdown-label">Time Remaining</div>
+    <div class="countdown-label" id="sub">Time Remaining</div>
   </div>
 
   <script>
@@ -77,22 +64,38 @@
       { label: "Period 8", start: "14:20", end: "15:05" },
     ];
 
+    function toMinutes(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
+
     function getCurrentSegment(now) {
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const firstStart = toMinutes(schedule[0].start);
+      const lastEnd = toMinutes(schedule[schedule.length-1].end);
+
+      if (currentMinutes < firstStart) {
+        const [sh, sm] = schedule[0].start.split(":").map(Number);
+        return { label: "School Starts In", endHour: sh, endMinute: sm, sub: "Until 1st Period" };
+      }
+
       for (let i = 0; i < schedule.length; i++) {
         const [sh, sm] = schedule[i].start.split(":").map(Number);
         const [eh, em] = schedule[i].end.split(":").map(Number);
         const start = sh * 60 + sm;
         const end = eh * 60 + em;
+
         if (currentMinutes >= start && currentMinutes < end) {
-          return { label: schedule[i].label, endHour: eh, endMinute: em };
+          return { label: schedule[i].label, endHour: eh, endMinute: em, sub: "Time Remaining" };
         }
+
         if (i < schedule.length - 1) {
-          const [nextSh, nextSm] = schedule[i+1].start.split(":").map(Number);
+          const [nextSh, nextSm] = schedule[i + 1].start.split(":").map(Number);
           if (currentMinutes >= end && currentMinutes < nextSh * 60 + nextSm) {
-            return { label: "Passing Period", endHour: nextSh, endMinute: nextSm };
+            return { label: "Passing Period", endHour: nextSh, endMinute: nextSm, sub: "Until Next Class" };
           }
         }
+      }
+
+      if (currentMinutes >= lastEnd) {
+        return { label: "School Day Over", endHour: null, endMinute: null, sub: "See you tomorrow" };
       }
       return null;
     }
@@ -102,38 +105,43 @@
       const segment = getCurrentSegment(now);
       const labelEl = document.getElementById("label");
       const timerEl = document.getElementById("timer");
+      const subEl = document.getElementById("sub");
 
       if (!segment) {
         labelEl.textContent = "No Class In Session";
         timerEl.textContent = "--:--";
+        subEl.textContent = "";
         return;
       }
+
+      labelEl.textContent = segment.label;
+      subEl.textContent = segment.sub || "";
+
+      if (segment.endHour === null) {
+        timerEl.textContent = "--:--";
+        return;
+      }
+
       const end = new Date();
       end.setHours(segment.endHour, segment.endMinute, 0, 0);
+
       let diff = Math.max(0, Math.floor((end - now) / 1000));
       const minutes = Math.floor(diff / 60);
       const seconds = diff % 60;
-      labelEl.textContent = segment.label;
-      timerEl.textContent = `${minutes}:${seconds.toString().padStart(2,'0')}`;
+      timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    // Responsive font scaling
     function resizeText() {
       const container = document.getElementById("container");
-      const w = container.offsetWidth;
-      const h = container.offsetHeight;
-      const base = Math.min(w, h);
-
-      document.querySelector(".label").style.fontSize = (base * 0.08) + "px";
-      document.querySelector(".timer").style.fontSize = (base * 0.25) + "px";
-      document.querySelector(".countdown-label").style.fontSize = (base * 0.07) + "px";
+      const base = Math.min(container.offsetWidth, container.offsetHeight);
+      document.querySelector(".label").style.fontSize = (base * 0.07) + "px";
+      document.querySelector(".timer").style.fontSize = (base * 0.22) + "px";
+      document.querySelector(".countdown-label").style.fontSize = (base * 0.06) + "px";
     }
 
-    window.addEventListener("resize", resizeText);
-    window.addEventListener("load", resizeText);
-
-    setInterval(updateTimer, 1000);
-    updateTimer();
+    window.addEventListener("resize", () => { resizeText(); updateTimer(); });
+    window.addEventListener("load", () => { resizeText(); updateTimer(); });
+    setInterval(() => { updateTimer(); }, 1000);
   </script>
 </body>
 </html>
