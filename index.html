@@ -1,156 +1,235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Class Countdown Timer — Aspect‑Locked Transform Scale</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet" />
+  <title>Class Countdown – IEP Hub Style</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --slate-blue:#4A7A92; /* titles */
-      --muted-green:#879B8D; /* subtitles */
-      --soft-purple:#756A85; /* numbers */
-      --glass-bg: rgba(255,255,255,0.7);
-      --radius: 20px; /* consistent rounded corners */
+      --slate:#4A7A92;
+      --green:#879B8D;
+      --purple:#756A85;
+      --lilac:#8E869F;
+      --glass-bg: rgba(255,255,255,.7);
+      --radius:20px;
+      --pad:5%;
     }
-
-    html, body { height:100%; margin:0; background:transparent; font-family:'Lexend',sans-serif; }
-
-    .stage{ position:relative; width:100%; height:100%; overflow:hidden; background:transparent; padding:3%; box-sizing:border-box; }
-
-    .base{
-      position:absolute; left:0; top:0;
-      width: 800px;
-      height: 600px;
-      transform-origin: 0 0;
-      will-change: transform;
+    html,body{
+      height:100%;
+      margin:0;
+      background:transparent;
+      font-family:"Lexend", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
     }
-
+    .wrap{
+      position:relative;
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-sizing:border-box;
+    }
     .card{
-      width:100%; height:100%;
+      width:100%;
+      height:100%;
       background:var(--glass-bg);
-      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-      border-radius: var(--radius);
-      overflow:hidden;
-
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      text-align:center; padding: 40px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius:var(--radius);
+      box-sizing:border-box;
+      padding:var(--pad);
+      display:flex;
+      flex-direction:column;
+      gap:0.6em;
     }
-
-    .label{ color:var(--slate-blue); font-weight:700; line-height:1.1; font-size: 64px; margin:0 0 16px 0; }
-    .timer{ color:var(--soft-purple); font-weight:700; line-height:1; font-size: 200px; letter-spacing:0.02em; margin:6px 0; }
-    .countdown-label{ color:var(--muted-green); font-weight:700; line-height:1.1; font-size: 48px; margin:12px 0 0 0; }
-    .timer.hidden{ display:none; }
+    .card{ 
+      --minside: min(100cqw, 100cqh);
+      --title: clamp(1rem, calc(var(--minside) * 0.06), 2rem);
+      --label: clamp(0.8rem, calc(var(--minside) * 0.04), 1.2rem);
+      --number: clamp(2.4rem, calc(var(--minside) * 0.18), 6rem);
+      --sub: clamp(0.9rem, calc(var(--minside) * 0.045), 1.4rem);
+    }
+    .clock{
+      font-weight:700;
+      font-size:var(--label);
+      color:var(--slate);
+      text-align:center;
+    }
+    .title{
+      text-align:center;
+      font-weight:700;
+      font-size:var(--title);
+      color:var(--slate);
+    }
+    .count{
+      display:flex;
+      align-items:baseline;
+      justify-content:center;
+      gap:0.2em;
+    }
+    .num{
+      font-weight:700;
+      font-size:var(--number);
+      color:var(--purple);
+      line-height:1;
+      transition:opacity .25s ease-in-out, transform .25s ease-in-out;
+    }
+    .sep{
+      font-weight:700;
+      font-size:calc(var(--number) * 0.5);
+      color:var(--lilac);
+      opacity:.9;
+      transform:translateY(-5%);
+    }
+    .subtitle{
+      text-align:center;
+      font-weight:500;
+      font-size:var(--sub);
+      color:var(--green);
+      opacity:.95;
+    }
+    .aspect{
+      position:absolute; inset:var(--pad);
+      aspect-ratio:3 / 4;
+      max-width:calc(100% - 2*var(--pad));
+      max-height:calc(100% - 2*var(--pad));
+      margin:auto;
+    }
+    .aspect > .card{ width:100%; height:100%; }
   </style>
 </head>
 <body>
-  <div class="stage" id="stage">
-    <div class="base" id="base">
+  <div class="wrap">
+    <div class="aspect">
       <div class="card">
-        <div class="label" id="label">Loading...</div>
-        <div class="timer" id="timer">--:--</div>
-        <div class="countdown-label" id="sub">Time Remaining</div>
+        <div id="clock" class="clock">--:--:--</div>
+        <div id="title" class="title">School Starts In</div>
+        <div class="count" aria-live="polite" aria-atomic="true">
+          <span id="m" class="num">00</span><span class="sep">:</span>
+          <span id="s" class="num">00</span>
+        </div>
+        <div id="subtitle" class="subtitle">Next bell at 8:05 AM</div>
       </div>
     </div>
   </div>
 
   <script>
-    const BASE_W = 800;
-    const BASE_H = 600;
+  (function(){
+    const TZ = 'America/Indiana/Indianapolis';
+    const clockEl = document.getElementById('clock');
+    const titleEl = document.getElementById('title');
+    const mEl = document.getElementById('m');
+    const sEl = document.getElementById('s');
+    const subtitleEl = document.getElementById('subtitle');
 
-    const schedule = [
-      { label: "Period 1", start: "08:05", end: "08:50" },
-      { label: "Period 2", start: "08:55", end: "09:40" },
-      { label: "Period 3", start: "09:45", end: "10:30" },
-      { label: "Period 4", start: "10:35", end: "11:15" },
-      { label: "5A Lunch / 5B Class", start: "11:15", end: "12:05" },
-      { label: "5A Class / 5B Lunch", start: "12:05", end: "12:35" },
-      { label: "Period 6", start: "12:40", end: "13:25" },
-      { label: "Period 7", start: "13:30", end: "14:15" },
-      { label: "Period 8", start: "14:20", end: "15:05" },
-    ];
+    function getZonedParts(date=new Date()){
+      const fmt = new Intl.DateTimeFormat('en-US',{
+        timeZone: TZ,
+        hour12: true,
+        hour:'2-digit', minute:'2-digit', second:'2-digit'
+      });
+      const parts = fmt.formatToParts(date);
+      const get = t => parts.find(p => p.type===t)?.value;
+      let hour12 = parseInt(get('hour'),10);
+      const ampm = get('dayPeriod');
+      let hour24 = hour12 % 12 + (ampm?.toLowerCase()==='pm' ? 12 : 0);
+      const mm = parseInt(get('minute'),10);
+      const ss = parseInt(get('second'),10);
+      return {hour:hour24, minute:mm, second:ss, ampm, hour12};
+    }
+    function two(n){ return n<10? '0'+n : ''+n; }
+    function secs(h,m,s){ return h*3600 + m*60 + s; }
 
-    function toMinutes(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
+    const B = {
+      START: secs(8,5,0),
+      P1_END: secs(8,50,0),
+      PASS1_END: secs(8,55,0),
+      P2_END: secs(9,40,0),
+      PASS2_END: secs(9,45,0),
+      P3_END: secs(10,30,0),
+      PASS3_END: secs(10,35,0),
+      P4_END: secs(11,15,0),
+      P5A_END: secs(12,5,0),
+      P5B_END: secs(12,35,0),
+      PASS5_END: secs(12,40,0),
+      P6_END: secs(13,25,0),
+      PASS6_END: secs(13,30,0),
+      P7_END: secs(14,15,0),
+      PASS7_END: secs(14,20,0),
+      P8_END: secs(15,5,0)
+    };
 
-    function getCurrentSegment(now) {
-      const currentMinutes = now.getHours()*60 + now.getMinutes();
-      const firstStart = toMinutes(schedule[0].start);
-      const lastEnd   = toMinutes(schedule[schedule.length-1].end);
-
-      if (currentMinutes < firstStart) {
-        const [sh, sm] = schedule[0].start.split(":").map(Number);
-        return { label: "School Starts In", endHour: sh, endMinute: sm, sub: "Until 1st Period", showTimer:true };
+    function state(nowSec){
+      if (nowSec < B.START){
+        return {label:'School Starts In', range:'Next bell at 8:05 AM', endSec:B.START};
       }
-
-      for (let i=0;i<schedule.length;i++){
-        const [sh, sm] = schedule[i].start.split(":").map(Number);
-        const [eh, em] = schedule[i].end.split(":").map(Number);
-        const start = sh*60+sm, end = eh*60+em;
-        if (currentMinutes >= start && currentMinutes < end){
-          return { label: schedule[i].label, endHour: eh, endMinute: em, sub: "Time Remaining", showTimer:true };
-        }
-        if (i < schedule.length-1){
-          const [nsh, nsm] = schedule[i+1].start.split(":").map(Number);
-          const nextStart = nsh*60+nsm;
-          if (currentMinutes >= end && currentMinutes < nextStart){
-            return { label: "Passing Period", endHour: nsh, endMinute: nsm, sub: "Until Next Class", showTimer:true };
-          }
-        }
-      }
-
-      if (currentMinutes >= lastEnd){
-        return { label: "School Day Over", endHour: null, endMinute: null, sub: "See you tomorrow", showTimer:false };
-      }
-      return null;
+      if (nowSec < B.P1_END) return {label:'Period 1 Ends In', range:'8:05 – 8:50', endSec:B.P1_END};
+      if (nowSec < B.PASS1_END) return {label:'Passing Period', range:'Next class at 8:55', endSec:B.PASS1_END};
+      if (nowSec < B.P2_END) return {label:'Period 2 Ends In', range:'8:55 – 9:40', endSec:B.P2_END};
+      if (nowSec < B.PASS2_END) return {label:'Passing Period', range:'Next class at 9:45', endSec:B.PASS2_END};
+      if (nowSec < B.P3_END) return {label:'Period 3 Ends In', range:'9:45 – 10:30', endSec:B.P3_END};
+      if (nowSec < B.PASS3_END) return {label:'Passing Period', range:'Next class at 10:35', endSec:B.PASS3_END};
+      if (nowSec < B.P4_END) return {label:'Period 4 Ends In', range:'10:35 – 11:15', endSec:B.P4_END};
+      if (nowSec < B.P5A_END) return {label:'Period 5 Ends In', range:'11:15 – 12:05', endSec:B.P5A_END};
+      if (nowSec < B.P5B_END) return {label:'Period 5 Ends In', range:'12:05 – 12:35', endSec:B.P5B_END};
+      if (nowSec < B.PASS5_END) return {label:'Passing Period', range:'Next class at 12:40', endSec:B.PASS5_END};
+      if (nowSec < B.P6_END) return {label:'Period 6 Ends In', range:'12:40 – 1:25', endSec:B.P6_END};
+      if (nowSec < B.PASS6_END) return {label:'Passing Period', range:'Next class at 1:30', endSec:B.PASS6_END};
+      if (nowSec < B.P7_END) return {label:'Period 7 Ends In', range:'1:30 – 2:15', endSec:B.P7_END};
+      if (nowSec < B.PASS7_END) return {label:'Passing Period', range:'Next class at 2:20', endSec:B.PASS7_END};
+      if (nowSec < B.P8_END) return {label:'Period 8 Ends In', range:'2:20 – 3:05', endSec:B.P8_END};
+      return {label:'School Day Over', range:'See you tomorrow!', endSec:null};
     }
 
-    function updateTimer(){
+    function formatClock(parts){
+      const h12 = parts.hour12.toString().padStart(2,'0');
+      return `${h12}:${two(parts.minute)}:${two(parts.second)} ${parts.ampm}`;
+    }
+
+    let lastSec = -1;
+
+    function tick(){
       const now = new Date();
-      const seg = getCurrentSegment(now);
-      const labelEl = document.getElementById('label');
-      const timerEl = document.getElementById('timer');
-      const subEl   = document.getElementById('sub');
+      const p = getZonedParts(now);
+      const nowSec = secs(p.hour, p.minute, p.second);
+      clockEl.textContent = formatClock(p);
 
-      if (!seg){
-        labelEl.textContent = 'No Class In Session';
-        timerEl.textContent = '--:--';
-        timerEl.classList.remove('hidden');
-        subEl.textContent = '';
+      const st = state(nowSec);
+      titleEl.textContent = st.label;
+      subtitleEl.textContent = st.range;
+
+      if (st.endSec == null){
+        if (lastSec !== nowSec){
+          mEl.textContent = '00';
+          sEl.textContent = '00';
+          lastSec = nowSec;
+        }
+        requestAnimationFrame(scheduleNext);
         return;
       }
 
-      labelEl.textContent = seg.label;
-      subEl.textContent = seg.sub || '';
+      let remain = Math.max(0, st.endSec - nowSec);
+      const MM = Math.floor(remain / 60);
+      const SS = remain % 60;
 
-      if (!seg.showTimer || seg.endHour === null){
-        timerEl.classList.add('hidden');
-        return;
-      } else {
-        timerEl.classList.remove('hidden');
+      if (lastSec !== nowSec){
+        mEl.textContent = two(MM);
+        sEl.textContent = two(SS);
+        lastSec = nowSec;
       }
-
-      const end = new Date();
-      end.setHours(seg.endHour, seg.endMinute, 0, 0);
-      const diff = Math.max(0, Math.floor((end - now)/1000));
-      const mm = Math.floor(diff/60), ss = diff%60;
-      timerEl.textContent = `${mm}:${ss.toString().padStart(2,'0')}`;
+      requestAnimationFrame(scheduleNext);
     }
 
-    const stage = document.getElementById('stage');
-    const base  = document.getElementById('base');
-
-    function layout(){
-      const W = stage.clientWidth;
-      const H = stage.clientHeight;
-      const scale = Math.max(0.1, Math.min(W/BASE_W, H/BASE_H));
-      base.style.transform = `translate(${(W-BASE_W*scale)/2}px, ${(H-BASE_H*scale)/2}px) scale(${scale})`;
+    function scheduleNext(){
+      const t = new Date();
+      const ms = t.getMilliseconds();
+      const wait = 1000 - ms + 5;
+      setTimeout(tick, wait);
     }
 
-    const ro = new ResizeObserver(layout);
-    ro.observe(stage);
-    window.addEventListener('orientationchange', layout);
-    window.addEventListener('load', () => { layout(); updateTimer(); });
-    setInterval(updateTimer, 1000);
+    tick();
+  })();
   </script>
 </body>
 </html>
