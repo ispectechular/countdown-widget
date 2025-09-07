@@ -46,15 +46,8 @@
     .card{ 
       --minside: min(100cqw, 100cqh);
       --title: clamp(1rem, calc(var(--minside) * 0.06), 2rem);
-      --label: clamp(0.8rem, calc(var(--minside) * 0.04), 1.2rem);
       --number: clamp(2.4rem, calc(var(--minside) * 0.18), 6rem);
       --sub: clamp(0.9rem, calc(var(--minside) * 0.045), 1.4rem);
-    }
-    .clock{
-      font-weight:700;
-      font-size:var(--label);
-      color:var(--slate);
-      text-align:center;
     }
     .title{
       text-align:center;
@@ -91,7 +84,7 @@
     }
     .aspect{
       position:absolute; inset:var(--pad);
-      aspect-ratio:3 / 4;
+      aspect-ratio:4 / 3;
       max-width:calc(100% - 2*var(--pad));
       max-height:calc(100% - 2*var(--pad));
       margin:auto;
@@ -103,7 +96,6 @@
   <div class="wrap">
     <div class="aspect">
       <div class="card">
-        <div id="clock" class="clock">--:--:--</div>
         <div id="title" class="title">School Starts In</div>
         <div class="count" aria-live="polite" aria-atomic="true">
           <span id="m" class="num">00</span><span class="sep">:</span>
@@ -117,7 +109,6 @@
   <script>
   (function(){
     const TZ = 'America/Indiana/Indianapolis';
-    const clockEl = document.getElementById('clock');
     const titleEl = document.getElementById('title');
     const mEl = document.getElementById('m');
     const sEl = document.getElementById('s');
@@ -182,18 +173,12 @@
       return {label:'School Day Over', range:'See you tomorrow!', endSec:null};
     }
 
-    function formatClock(parts){
-      const h12 = parts.hour12.toString().padStart(2,'0');
-      return `${h12}:${two(parts.minute)}:${two(parts.second)} ${parts.ampm}`;
-    }
-
     let lastSec = -1;
 
     function tick(){
       const now = new Date();
       const p = getZonedParts(now);
       const nowSec = secs(p.hour, p.minute, p.second);
-      clockEl.textContent = formatClock(p);
 
       const st = state(nowSec);
       titleEl.textContent = st.label;
@@ -233,4 +218,5 @@
   </script>
 </body>
 </html>
+
 
